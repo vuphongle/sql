@@ -1,146 +1,214 @@
-﻿use AdventureWorks2008R2
+﻿--Bài tập trên trường
 
---bài 1
-CREATE TABLE NHANVIEN(
-	MANV NVARCHAR(50),
-	TENNV NVARCHAR(30)
+CREATE DATABASE QLNV
+
+USE QLNV
+
+CREATE TABLE NV
+(
+	MANV INT,
+	HoTen varchar(20),
+	LUONG FLOAT
 )
 
-INSERT NHANVIEN VALUES ('NV001', 'PHONG')
-INSERT NHANVIEN VALUES ('NV002', 'PHONG')
-INSERT NHANVIEN VALUES ('NV003', 'PHONG')
+CREATE TABLE CV
+(
+	MACV VARCHAR(20),
+	TENCV VARCHAR(10),
+	DG INT
+)
 
-SELECT * FROM NHANVIEN
+CREATE TABLE PC
+(
+	MANV INT,
+	MACV VARCHAR(50),
+	SL INT
+)
 
-CREATE TRIGGER KTMNV
-ON NHANVIEN
-INSTEAD OF INSERT
+INSERT NV VALUES (1, 'A', 0)
+INSERT NV VALUES (2, 'B', 0)
+
+INSERT CV VALUES ('PT', 'AAA', 100)
+INSERT CV VALUES ('TK', 'BBB', 200)
+INSERT CV VALUES ('CODE', 'CCC', 300)
+
+ALTER TRIGGER THEMPC
+ON PC
+FOR INSERT
 AS
 	BEGIN
-		IF EXISTS (SELECT * FROM inserted WHERE MANV IN (SELECT MANV FROM NHANVIEN))
+		DECLARE @LUONG FLOAT
+		IF EXISTS (SELECT * FROM NV	p join inserted i on p.MANV = i.MANV
+					join CV d on d.MACV = i.MACV)
 			BEGIN
-				PRINT N'MA NHAN VIEN DA TON TAI'
-				ROLLBACK TRAN
-			END 
+				SELECT @LUONG = SUM(SL * DG) FROM inserted i JOIN CV o on i.MACV = o.MACV
+				UPDATE NV SET LUONG += @LUONG
+				WHERE MANV IN (SELECT MANV FROM inserted)
+			END
 		ELSE
-			INSERT NHANVIEN SELECT * FROM inserted
+			BEGIN
+				PRINT N'MA NHAN VIEN HOAC MA CONG VIEC KHONG TON TAI'
+				ROLLBACK TRAN
+			END
 	END
 
-INSERT NHANVIEN VALUES ('002', 'DUNG')
+--Kiem tra
+insert PC values (1, 'TK', 10)
+insert PC values (2, 'CODE', 10)
 
-SELECT *FROM NHANVIEN
+SELECT *FROM NV
+SELECT *FROM CV
 
---Bài 2:
-CREATE TABLE NHANVIEN_TK
-(
-	MANV NVARCHAR(30),
-	MATK NVARCHAR(30),
-	SODU MONEY
-)
+insert PC values (5, 'TK', 10)
 
-INSERT NHANVIEN_TK VALUES('NV001', 'TK001', 100)
 
-SELECT * FROM NHANVIEN_TK
+--Bai 2
 
+CREATE TRIGGER XoaPC
+ON PC
+FOR DELETE
+AS
+	BEGIN
+		DECLARE @LUONG FLOAT
+		IF EXISTS (SELECT * FROM NV	p join deleted i on p.MANV = i.MANV
+					join CV d on d.MACV = i.MACV)
+			BEGIN
+				SELECT @LUONG = SUM(SL * DG) FROM deleted i JOIN CV o on i.MACV = o.MACV
+				UPDATE NV SET LUONG -= @LUONG
+				WHERE MANV IN (SELECT MANV FROM deleted)
+			END
+		ELSE
+			BEGIN
+				PRINT N'MA NHAN VIEN HOAC MA CONG VIEC KHONG TON TAI'
+				ROLLBACK TRAN
+			END
+	END
+
+--kiem tra
+
+SELECT *FROM NV
+SELECT *FROM CV
+SELECT *FROM PC
+
+delete PC where MANV = 1 and MACV LIKE 'TK'
+
+--KHONG TON TAI MANV HOAC MACV
+
+delete PC where MANV = 2 and MACV LIKE 'TK'
+
+
+--BAI3
+
+--ALTER TRIGGER XoaNV
+--ON NV
+--AFTER DELETE
+--AS
+--	BEGIN
+--		IF EXISTS (SELECT * FROM NV	p join deleted i on p.MANV = i.MANV)
+--			BEGIN
+--				IF EXISTS (SELECT *FROM PC p join deleted o on o.MANV = p.MANV)
+--					delete from PC where MANV in (SELECT MANV from deleted)
+--			END
+--		ELSE
+--			BEGIN
+--				PRINT N'MA NHAN VIEN HOAC MA CONG VIEC KHONG TON TAI'
+--				ROLLBACK TRAN
+--			END
+--	END
+
+CREATE TRIGGER XOA_PC
+ON NV
+FOR DELETE
+	AS
+	BEGIN
+	DELETE FROM PC WHERE MANV IN (SELECT MANV FROM DELETED)
+END
+
+SELECT *FROM NV
+SELECT *FROM CV
+SELECT *FROM PC
+--kiem tra
+DELETE FROM NV WHERE MANV = 2
+
+
+
+--Bài tập về nhà
+
+CREATE DATABASE QLSV 
+go
+USE QLSV
 go
 
-CREATE TRIGGER KTMNVVMTK 
-ON NHANVIEN_TK
-INSTEAD OF INSERT
-AS
-	BEGIN
-		IF EXISTS (SELECT * FROM inserted 
-			WHERE (MANV IN (SELECT MANV FROM NHANVIEN_TK))
-			AND (MATK IN (SELECT MATK FROM NHANVIEN_TK)))
-				BEGIN
-					PRINT N'MA NHAN VIEN VA MA TK DA TON TAI'
-					ROLLBACK TRAN
-				END
-		ELSE
-			INSERT NHANVIEN_TK SELECT * FROM inserted
-	END
-
-INSERT NHANVIEN_TK VALUES('NV002', 'TK001', 100)
-
-SELECT * FROM NHANVIEN
-
-SELECT * FROM NHANVIEN_TK
-
---Bài 3
-CREATE TABLE TAIKHOAN 
+CREATE TABLE SinhVien
 (
-	MATK NVARCHAR(30),
-	TENTK NVARCHAR(30),
-	PASS NVARCHAR(15)
+	maSV varchar(20) primary key,
+	tenSV nvarchar(50),
+	maLop varchar(20)
 )
 
-INSERT TAIKHOAN VALUES ('TK001', 'TTK001', 'ABC')
-INSERT TAIKHOAN VALUES ('TK004', 'TTK004', 'ABC')
-
-ALTER TRIGGER KTKN
-ON NHANVIEN_TK FOR INSERT
-AS
-	IF EXISTS (SELECT * FROM inserted WHERE MANV NOT IN (SELECT MANV FROM NHANVIEN))
-		BEGIN
-			PRINT N'MA NHAN VIEN KHONG TON TAI'
-			ROLLBACK TRAN
-		END
-	ELSE
-		BEGIN
-			IF EXISTS (SELECT *FROM inserted WHERE MATK NOT IN (SELECT MATK FROM TAIKHOAN))
-				BEGIN
-					PRINT N'MA TAI KHOAN KHONG TON TAI'
-					ROLLBACK TRAN
-				END
-		END
-SELECT *FROM NHANVIEN
-SELECT *FROM NHANVIEN_TK
-SELECT *FROM TAIKHOAN
-
-INSERT NHANVIEN_TK VALUES('NV003','TK001',200)
-INSERT NHANVIEN_TK VALUES('NV001','TK004',200)
-
-DELETE FROM NHANVIEN WHERE MANV = '002'
-
-
---Bài 4: 
-CREATE TABLE LOPHOC
+CREATE TABLE LopHoc
 (
-	MALOP NVARCHAR(30),
-	TENLOP NVARCHAR(30),
-	SISO INT
+	maLop varchar(20) primary key,
+	tenLop nvarchar(20),
+	siSo int
 )
 
-INSERT LOPHOC VALUES('ML001', 'DHKTPM', 0)
-INSERT LOPHOC VALUES('ML002', 'DHKHMT', 0)
-INSERT LOPHOC VALUES('ML003', 'DHKHDL', 0)
+insert into LopHoc values ('ML001', N'DHKTPM17C', 0), ('ML002', N'DHKTPM17A', 0), ('ML003', N'DHKTPM17B', 0)
+go
 
-SELECT *FROM LOPHOC
-CREATE TABLE SINHVIEN 
-(
-	MASV NVARCHAR(30),
-	TENSV NVARCHAR(30),
-	MALOP NVARCHAR(30)
-)
 
+--Trigger khi inser siSo được cập nhật
 CREATE TRIGGER CAPNHATSISO
-ON SINHVIEN
+ON SinhVien
 FOR INSERT
 AS
 	BEGIN 
-		UPDATE LOPHOC
-		SET SISO += (SELECT COUNT(*) FROM inserted) FROM LOPHOC p JOIN inserted o
-		on p.MALOP = o.MALOP 
+		UPDATE LopHoc
+		SET siSo += (SELECT COUNT(*) FROM inserted) FROM LopHoc p JOIN inserted o
+		on p.maLop = o.maLop 
 	END
+go
 
---THỰC THI
-INSERT SINHVIEN VALUES('SV001', 'VU PHONG', 'ML001')
-INSERT SINHVIEN VALUES('SV002', 'VU PHONG', 'ML002')
-INSERT SINHVIEN VALUES('SV003', 'PHONG VU', 'ML001'),('SV004', 'PHONG VU', 'ML002')
+--Trigger khi update thay đổi maLop siSo được cập nhật
+CREATE TRIGGER updatesiSo
+on SinhVien
+AFTER UPDATE
+AS
+	BEGIN
+	SET NOCOUNT ON;
 
-SELECT *FROM LOPHOC
-SELECT *FROM SINHVIEN
+	DECLARE @OldMaLop nvarchar(50);
+	DECLARE @NewMaLop nvarchar(50);
+	DECLARE @MaSV nvarchar(50);
 
+	SELECT @OldMaLop = d.maLop, @NewMaLop = i.maLop, @MaSV = i.maSV
+	FROM inserted i
+	JOIN deleted d ON i.maSV = d.maSV;
+	IF (@OldMaLop <> @NewMaLop)
+		BEGIN
+			UPDATE LopHoc SET siSo = siSo - 1 WHERE maLop = @OldMaLop;
+			UPDATE LopHoc SET siSo = siSo + 1 WHERE maLop = @NewMaLop;
+		END
+END
+
+select * from LopHoc
+select * from SinhVien
+
+--Thêm dữ liệu cho SinhVien để cho siSo
+insert into SinhVien values('SV001', N'Lê Vũ Phong', 'ML001')
+insert into SinhVien values('SV002', N'Nguyễn Tuấn Dũng', 'ML002')
+insert into SinhVien values('SV003', N'Mai Tấn Đạt', 'ML003')
+insert into SinhVien values('SV004', N'Trần Nguyễn Minh Khôi', 'ML001')
+insert into SinhVien values('SV005', N'Trần Hoàng Vinh', 'ML002')
+
+--Kiểm tra lại trigger
+delete SinhVien where maLop like 'ML001'
+
+update SinhVien set maLop = 'ML002'
+where maSV like 'SV001'
+
+
+--Bài tập trong file bài tập
 
 --Bài 1
 -- Tạo mới 2 bảng M_Employees và M_Department theo cấu trúc sau: 
@@ -166,10 +234,6 @@ SELECT *FROM SINHVIEN
 --M_Department khi chèn một record mới thông qua view EmpDepart_View.
 --Dữ liệu test:
 --insert EmpDepart_view values(1, 'Nguyen','Hoang','Huy', 11,'Marketing','Sales')
-
-CREATE DATABASE tuan7
-
-USE tuan7
 
 create table M_Department
 (
@@ -226,6 +290,7 @@ select * from [dbo].[M_Department]
 select * from [dbo].[M_Employees]
 select * from [dbo].[EmpDepart_view]
 
+go
 --Câu 2
 --Tạo một trigger thực hiện trên bảng MSalesOrders có chức năng thiết lập độ ưu 
 --tiên của khách hàng (CustPriority) khi người dùng thực hiện các thao tác Insert, 
@@ -258,6 +323,61 @@ select * from [dbo].[EmpDepart_view]
 -- Viết trigger để lấy dữ liệu từ 2 bảng inserted và deleted.
 -- Viết câu lệnh kiểm tra việc thực thi của trigger vừa tạo bằng cách chèn thêm hoặc 
 --xóa hoặc update một record trên bảng MSalesOrders
+create table MCustomer
+(
+CustomerID int not null primary key, 
+CustPriority int
+)
+go
+create table MSalesOrders 
+(
+SalesOrderID int not null primary key, 
+OrderDate date,
+SubTotal money,
+CustomerID int foreign key references MCustomer(CustomerID) 
+)
+-- Chèn dữ liệu cho bảng MCustomer, lấy dữ liệu từ bảng Sales.Customer, 
+--nhưng chỉ lấy CustomerID>30100 và CustomerID<30118, cột CustPriority cho 
+--giá trị null.
+go
+insert MCustomer
+select [CustomerID], null from [Sales].[Customer]
+where CustomerID>30100 and CustomerID<30118
+-- Chèn dữ liệu cho bảng MSalesOrders, lấy dữ liệu từ bảng
+--Sales.SalesOrderHeader, chỉ lấy những hóa đơn của khách hàng có trong bảng 
+--khách hàng.
+go
+insert MSalesOrders
+select [SalesOrderID], [OrderDate], [SubTotal], c.[CustomerID]
+from [Sales].[SalesOrderHeader]  h
+join MCustomer c on c.CustomerID = h.CustomerID
+-- Viết trigger để lấy dữ liệu từ 2 bảng inserted và deleted.
+go
+create trigger Cau_2
+on MSalesOrders
+after insert 
+as
+declare @SumSubTotal money , @ID int
+select @ID = CustomerID
+from inserted 
+select  @SumSubTotal = Sum(SubTotal)
+from MSalesOrders
+where CustomerID = @ID
+update MCustomer
+set CustPriority =
+       case
+	   when @SumSubTotal < 10000 then 3
+	   when @SumSubTotal < 50000 then 2
+	   when @SumSubTotal > 50000 then 1
+		end
+where CustomerID = @ID
+-- Viết câu lệnh kiểm tra việc thực thi của trigger vừa tạo bằng cách chèn thêm hoặc 
+--xóa hoặc update một record trên bảng MSalesOrders
+go
+insert MSalesOrders
+values (1008, getdate(), 80000, 30101)
+go
+select * from MSalesOrders
 
 
 --Câu 3
@@ -363,8 +483,7 @@ DROP TABLE dbo.MDepartment
 GO
 
 
---Câu 4: 
---Bảng [Purchasing].[Vendor], chứa thông tin của nhà cung cấp, thuộc tính
+--4. Bảng [Purchasing].[Vendor], chứa thông tin của nhà cung cấp, thuộc tính
 --CreditRating hiển thị thông tin đánh giá mức tín dụng, có các giá trị: 
 --1 = Superior
 --2 = Excellent
@@ -374,12 +493,31 @@ GO
 --Viết một trigger nhằm đảm bảo khi chèn thêm một record mới vào bảng 
 --[Purchasing].[PurchaseOrderHeader], nếu Vender có CreditRating=5 thì hiển thị 
 --thông báo không cho phép chèn và đồng thời hủy giao tác.
+Create Trigger Cau_4
+on [Purchasing].[PurchaseOrderHeader]
+After insert
+as
+begin
+declare @CreditRating tinyint 
+select @CreditRating= CreditRating
+from [Purchasing].[Vendor] 
+where [BusinessEntityID] = (select  [VendorID] from inserted)
+if @CreditRating = 5
+    begin
+		raiserror ('khong cho phep chen ', 16, 1)
+		 ROLLBACK TRANSACTION
+    end
+ end
 --Dữ liệu test
---INSERT INTO Purchasing.PurchaseOrderHeader (RevisionNumber, Status, 
---EmployeeID, VendorID, ShipMethodID, OrderDate, ShipDate, SubTotal, TaxAmt, 
---Freight) VALUES ( 2 ,3, 261, 1652, 4 ,GETDATE() ,GETDATE() , 44594.55,
---,3567.564, ,1114.8638 );
-
+go
+INSERT INTO Purchasing.PurchaseOrderHeader (RevisionNumber, Status, 
+EmployeeID, VendorID, ShipMethodID, OrderDate, ShipDate, SubTotal, TaxAmt, 
+Freight) VALUES ( 2 ,3, 261, 1652, 4 ,GETDATE() ,GETDATE() , 44594.55,
+3567.564, 1114.8638 )
+go
+INSERT INTO Purchasing.PurchaseOrderHeader (RevisionNumber, Status, 
+EmployeeID, VendorID, ShipMethodID, OrderDate, ShipDate, SubTotal, TaxAmt, Freight)
+VALUES ( 2 ,3, 258, 1650, 4 ,GETDATE() ,GETDATE() , 44594.55,3567.564,1114.8638 );
 
 --Câu 5:
 --Viết một trigger điều chỉnh số liệu trên bảng ProductInventory (lưu thông tin số 
